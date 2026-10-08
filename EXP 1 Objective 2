@@ -1,0 +1,535 @@
+clc;
+clear;
+close all;
+
+%% ============================================================
+% CODE 2
+% TE10 VERSUS TM11 MODE COMPARISON
+% WR-90 RECTANGULAR WAVEGUIDE
+% ============================================================
+
+%% INPUT PARAMETERS
+
+f = 10e9;              % Operating frequency (Hz)
+
+a = 22.86e-3;          % Waveguide width (m)
+b = 10.16e-3;          % Waveguide height (m)
+L = 100e-3;            % Waveguide length (m)
+
+c = 3e8;               % Speed of light (m/s)
+
+%% ============================================================
+% BASIC PARAMETERS
+% ============================================================
+
+lambda0 = c/f;
+k0 = 2*pi/lambda0;
+
+fprintf('\n');
+fprintf('====================================================\n');
+fprintf('       TE10 VS TM11 MODE COMPARISON\n');
+fprintf('====================================================\n');
+
+fprintf('\nINPUT PARAMETERS\n');
+fprintf('Operating Frequency = %.2f GHz\n',f/1e9);
+fprintf('Waveguide Width     = %.2f mm\n',a*1000);
+fprintf('Waveguide Height    = %.2f mm\n',b*1000);
+fprintf('Waveguide Length    = %.2f mm\n',L*1000);
+
+
+%% ============================================================
+% TE10 MODE
+% ============================================================
+
+m_TE = 1;
+n_TE = 0;
+
+% Cutoff frequency
+fc_TE10 = (c/2)*sqrt( ...
+    (m_TE/a)^2 + (n_TE/b)^2 );
+
+% Cutoff wavenumber
+kc_TE10 = 2*pi*fc_TE10/c;
+
+
+%% Propagation constant for TE10
+
+if f > fc_TE10
+
+    beta_TE10 = sqrt(k0^2 - kc_TE10^2);
+
+else
+
+    beta_TE10 = 1i*sqrt(kc_TE10^2 - k0^2);
+
+end
+
+
+%% ============================================================
+% TM11 MODE
+% ============================================================
+
+m_TM = 1;
+n_TM = 1;
+
+% Cutoff frequency
+fc_TM11 = (c/2)*sqrt( ...
+    (m_TM/a)^2 + (n_TM/b)^2 );
+
+% Cutoff wavenumber
+kc_TM11 = 2*pi*fc_TM11/c;
+
+
+%% Propagation constant for TM11
+
+if f > fc_TM11
+
+    beta_TM11 = sqrt(k0^2 - kc_TM11^2);
+
+    alpha_TM11 = 0;
+
+else
+
+    alpha_TM11 = sqrt(kc_TM11^2 - k0^2);
+
+    % Below cutoff:
+    % beta = j*alpha
+    beta_TM11 = 1i*alpha_TM11;
+
+end
+
+
+%% ============================================================
+% DISPLAY CUTOFF FREQUENCIES
+% ============================================================
+
+fprintf('\n');
+fprintf('----------------------------------------------------\n');
+fprintf('CUTOFF FREQUENCY\n');
+fprintf('----------------------------------------------------\n');
+
+fprintf('TE10 theoretical fc = %.4f GHz\n',...
+        fc_TE10/1e9);
+
+fprintf('TM11 theoretical fc = %.4f GHz\n',...
+        fc_TM11/1e9);
+
+
+%% ============================================================
+% DISPLAY PROPAGATION CONSTANTS
+% ============================================================
+
+fprintf('\n');
+fprintf('----------------------------------------------------\n');
+fprintf('PROPAGATION CONSTANT\n');
+fprintf('----------------------------------------------------\n');
+
+fprintf('TE10 beta = %.4f rad/m\n',...
+        real(beta_TE10));
+
+if f > fc_TM11
+
+    fprintf('TM11 beta = %.4f rad/m\n',...
+            real(beta_TM11));
+
+else
+
+    fprintf('TM11 is below cutoff.\n');
+    fprintf('TM11 attenuation constant alpha = %.4f Np/m\n',...
+            alpha_TM11);
+
+    fprintf('TM11 beta = j%.4f rad/m\n',...
+            alpha_TM11);
+
+end
+
+
+%% ============================================================
+% PROPAGATION STATUS
+% ============================================================
+
+fprintf('\n');
+fprintf('----------------------------------------------------\n');
+fprintf('PROPAGATION STATUS\n');
+fprintf('----------------------------------------------------\n');
+
+if f > fc_TE10
+    fprintf('TE10 : PROPAGATING\n');
+else
+    fprintf('TE10 : BELOW CUTOFF\n');
+end
+
+if f > fc_TM11
+    fprintf('TM11 : PROPAGATING\n');
+else
+    fprintf('TM11 : BELOW CUTOFF / EVANESCENT\n');
+end
+
+
+%% ============================================================
+% CREATE WAVEGUIDE GRID
+% ============================================================
+
+Nx = 50;
+Ny = 30;
+
+x = linspace(0,a,Nx);
+y = linspace(0,b,Ny);
+
+[X,Y] = meshgrid(x,y);
+
+
+%% ============================================================
+% TE10 ELECTRIC FIELD
+% ============================================================
+
+% For TE10:
+% Ez = 0
+% Ey varies as sin(pi*x/a)
+
+Ex_TE10 = zeros(size(X));
+
+Ey_TE10 = sin(pi*X/a);
+
+% Normalize
+Ey_TE10 = Ey_TE10 ./ max(abs(Ey_TE10(:)));
+
+
+%% ============================================================
+% TE10 MAGNETIC FIELD
+% ============================================================
+
+Hx_TE10 = zeros(size(X));
+
+Hy_TE10 = cos(pi*X/a);
+
+Hz_TE10 = cos(pi*X/a);
+
+% Normalize
+Hy_TE10 = Hy_TE10 ./ max(abs(Hy_TE10(:)));
+Hz_TE10 = Hz_TE10 ./ max(abs(Hz_TE10(:)));
+
+
+%% ============================================================
+% TM11 ELECTRIC FIELD
+% ============================================================
+
+% TM11:
+% Ez is non-zero
+
+Ez_TM11 = sin(pi*X/a).*sin(pi*Y/b);
+
+% Transverse electric field components
+Ex_TM11 = cos(pi*X/a).*sin(pi*Y/b);
+
+Ey_TM11 = sin(pi*X/a).*cos(pi*Y/b);
+
+% Normalize
+
+Ez_TM11 = Ez_TM11 ./ max(abs(Ez_TM11(:)));
+
+Ex_TM11 = Ex_TM11 ./ max(abs(Ex_TM11(:)));
+
+Ey_TM11 = Ey_TM11 ./ max(abs(Ey_TM11(:)));
+
+
+%% ============================================================
+% TM11 MAGNETIC FIELD
+% ============================================================
+
+Hx_TM11 = -Ey_TM11;
+Hy_TM11 = Ex_TM11;
+
+% Normalize
+
+Hx_TM11 = Hx_TM11 ./ max(abs(Hx_TM11(:)));
+
+Hy_TM11 = Hy_TM11 ./ max(abs(Hy_TM11(:)));
+
+
+%% ============================================================
+% FIGURE 1: TE10 ELECTRIC FIELD
+% ============================================================
+
+figure('Name','TE10 Electric Field');
+
+quiver(X*1000,Y*1000,...
+       Ex_TE10,Ey_TE10,...
+       'LineWidth',1.2);
+
+hold on;
+
+rectangle('Position',...
+    [0 0 a*1000 b*1000],...
+    'EdgeColor','k',...
+    'LineWidth',2);
+
+xlabel('x (mm)');
+ylabel('y (mm)');
+
+title('TE_{10} Electric Field Distribution');
+
+axis equal;
+grid on;
+
+
+%% ============================================================
+% FIGURE 2: TE10 MAGNETIC FIELD
+% ============================================================
+
+figure('Name','TE10 Magnetic Field');
+
+quiver(X*1000,Y*1000,...
+       Hx_TE10,Hy_TE10,...
+       'LineWidth',1.2);
+
+hold on;
+
+rectangle('Position',...
+    [0 0 a*1000 b*1000],...
+    'EdgeColor','k',...
+    'LineWidth',2);
+
+xlabel('x (mm)');
+ylabel('y (mm)');
+
+title('TE_{10} Magnetic Field Distribution');
+
+axis equal;
+grid on;
+
+
+%% ============================================================
+% FIGURE 3: TM11 ELECTRIC FIELD
+% ============================================================
+
+figure('Name','TM11 Electric Field');
+
+quiver(X*1000,Y*1000,...
+       Ex_TM11,Ey_TM11,...
+       'LineWidth',1.2);
+
+hold on;
+
+rectangle('Position',...
+    [0 0 a*1000 b*1000],...
+    'EdgeColor','k',...
+    'LineWidth',2);
+
+xlabel('x (mm)');
+ylabel('y (mm)');
+
+title('TM_{11} Transverse Electric Field Distribution');
+
+axis equal;
+grid on;
+
+
+%% ============================================================
+% FIGURE 4: TM11 LONGITUDINAL ELECTRIC FIELD
+% ============================================================
+
+figure('Name','TM11 Longitudinal Electric Field');
+
+surf(X*1000,Y*1000,Ez_TM11);
+
+xlabel('x (mm)');
+ylabel('y (mm)');
+zlabel('Normalized E_z');
+
+title('TM_{11} Longitudinal Electric Field Distribution');
+
+shading interp;
+colorbar;
+grid on;
+view(45,30);
+
+
+%% ============================================================
+% FIGURE 5: TM11 MAGNETIC FIELD
+% ============================================================
+
+figure('Name','TM11 Magnetic Field');
+
+quiver(X*1000,Y*1000,...
+       Hx_TM11,Hy_TM11,...
+       'LineWidth',1.2);
+
+hold on;
+
+rectangle('Position',...
+    [0 0 a*1000 b*1000],...
+    'EdgeColor','k',...
+    'LineWidth',2);
+
+xlabel('x (mm)');
+ylabel('y (mm)');
+
+title('TM_{11} Magnetic Field Distribution');
+
+axis equal;
+grid on;
+
+
+%% ============================================================
+% FIELD COMPARISON
+% ============================================================
+
+figure('Name','TE10 vs TM11 Field Comparison');
+
+subplot(2,2,1);
+
+surf(X*1000,Y*1000,abs(Ey_TE10));
+
+xlabel('x (mm)');
+ylabel('y (mm)');
+zlabel('|E|');
+
+title('TE_{10} Electric Field');
+
+shading interp;
+colorbar;
+view(45,30);
+
+
+subplot(2,2,2);
+
+surf(X*1000,Y*1000,abs(Ez_TM11));
+
+xlabel('x (mm)');
+ylabel('y (mm)');
+zlabel('|E|');
+
+title('TM_{11} Electric Field');
+
+shading interp;
+colorbar;
+view(45,30);
+
+
+subplot(2,2,3);
+
+surf(X*1000,Y*1000,abs(Hz_TE10));
+
+xlabel('x (mm)');
+ylabel('y (mm)');
+zlabel('|H|');
+
+title('TE_{10} Magnetic Field');
+
+shading interp;
+colorbar;
+view(45,30);
+
+
+subplot(2,2,4);
+
+H_TM11 = sqrt(Hx_TM11.^2 + Hy_TM11.^2);
+
+surf(X*1000,Y*1000,H_TM11);
+
+xlabel('x (mm)');
+ylabel('y (mm)');
+zlabel('|H|');
+
+title('TM_{11} Magnetic Field');
+
+shading interp;
+colorbar;
+view(45,30);
+
+sgtitle('TE_{10} versus TM_{11} Field Distributions');
+
+
+%% ============================================================
+% CUTOFF FREQUENCY COMPARISON GRAPH
+% ============================================================
+
+figure('Name','Cutoff Frequency Comparison');
+
+bar([fc_TE10/1e9 fc_TM11/1e9]);
+
+hold on;
+
+yline(f/1e9,'--','Operating Frequency = 10 GHz',...
+      'LineWidth',1.5);
+
+xticks([1 2]);
+xticklabels({'TE_{10}','TM_{11}'});
+
+ylabel('Frequency (GHz)');
+
+title('Cutoff Frequency Comparison');
+
+grid on;
+
+
+%% ============================================================
+% PROPAGATION / EVANESCENT FIELD
+% ============================================================
+
+z = linspace(0,L,200);
+
+% TE10 propagating field
+TE10_field = cos(beta_TE10*z);
+
+% TM11 evanescent field
+TM11_field = exp(-alpha_TM11*z);
+
+
+figure('Name','Propagation Comparison');
+
+plot(z*1000,TE10_field,...
+     'LineWidth',2);
+
+hold on;
+
+plot(z*1000,TM11_field,...
+     'LineWidth',2);
+
+xlabel('Waveguide Length z (mm)');
+ylabel('Normalized Field');
+
+title('TE_{10} Propagation vs TM_{11} Evanescent Decay');
+
+legend('TE_{10} Propagating',...
+       'TM_{11} Evanescent');
+
+grid on;
+
+
+%% ============================================================
+% FINAL COMPARISON TABLE
+% ============================================================
+
+fprintf('\n');
+fprintf('====================================================\n');
+fprintf('             FINAL COMPARISON\n');
+fprintf('====================================================\n');
+
+fprintf('\nMode       fc (GHz)       beta / j-alpha       Status\n');
+fprintf('----------------------------------------------------\n');
+
+fprintf('TE10       %.4f         %.4f rad/m        Propagating\n',...
+        fc_TE10/1e9,real(beta_TE10));
+
+fprintf('TM11       %.4f         j%.4f rad/m       Below cutoff\n',...
+        fc_TM11/1e9,alpha_TM11);
+
+fprintf('\n====================================================\n');
+
+fprintf('\nJUSTIFICATION:\n');
+
+fprintf('TE10 cutoff frequency = %.4f GHz\n',...
+        fc_TE10/1e9);
+
+fprintf('TM11 cutoff frequency = %.4f GHz\n',...
+        fc_TM11/1e9);
+
+fprintf('\nSince 10 GHz > %.4f GHz, TE10 propagates.\n',...
+        fc_TE10/1e9);
+
+fprintf('Since 10 GHz < %.4f GHz, TM11 is below cutoff.\n',...
+        fc_TM11/1e9);
+
+fprintf('\nSimulation completed successfully.\n');
